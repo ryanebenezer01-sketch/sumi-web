@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Sumi — ink wallpaper studio</title>
+<meta name="description" content="Turn any picture into a black-and-white ink wallpaper and its colour twin. Runs entirely on your device.">
+<meta name="theme-color" content="#070a18">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Poppins:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ==========================================================================
+   GENSHINNIGHT — foundation
+   ========================================================================== */
+:root{
+  --bg:#070a18; --bg-deep:#05060f;
+  --ink:#e8ecff; --ink-dim:#9aa3c7; --ink-faint:#6b73a0;
+  --gold:#e3c27d; --gold-soft:rgba(227,194,125,.35);
+  --cyan:#53e0ff; --violet:#8b7bff; --rose:#ff7bd5;
+  --glass:rgba(20,26,54,.55); --glass-2:rgba(20,26,54,.72);
+  --edge:rgba(140,160,255,.18);
+  --radius:16px;
+  --ease:cubic-bezier(.22,.61,.36,1);
+  --spring:cubic-bezier(.34,1.56,.64,1);
+  --safe-t:env(safe-area-inset-top,0px);
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);
+  font-family:'Poppins',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  font-weight:300;overflow-x:hidden;min-height:100dvh;-webkit-font-smoothing:antialiased}
+h1,h2,h3,.serif{font-family:'Cinzel',serif;letter-spacing:.04em}
+::selection{background:var(--gold-soft);color:#fff}
+a{color:inherit;text-decoration:none;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit;background:none;border:none;cursor:pointer;
+  -webkit-tap-highlight-color:transparent}
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:6px}
+
+.aurora{position:fixed;inset:-20%;z-index:0;pointer-events:none;
+  mix-blend-mode:screen;filter:blur(64px);opacity:.5;will-change:transform}
+.aurora i{position:absolute;border-radius:50%;width:58vmax;height:58vmax;display:block}
+.aurora i:nth-child(1){background:radial-gradient(circle,#123d6e 0%,transparent 60%);
+  top:-12%;left:-12%;animation:drift1 26s ease-in-out infinite alternate}
+.aurora i:nth-child(2){background:radial-gradient(circle,#3b1d6e 0%,transparent 60%);
+  bottom:-18%;right:-12%;animation:drift2 31s ease-in-out infinite alternate}
+.aurora i:nth-child(3){background:radial-gradient(circle,#0e4d57 0%,transparent 62%);
+  top:34%;left:32%;animation:drift3 23s ease-in-out infinite alternate}
+@keyframes drift1{to{transform:translate3d(12vw,8vh,0) scale(1.15)}}
+@keyframes drift2{to{transform:translate3d(-10vw,-9vh,0) scale(1.2)}}
+@keyframes drift3{to{transform:translate3d(-8vw,10vh,0) scale(.9)}}
+.dotgrid{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:radial-gradient(rgba(140,160,255,.14) 1px,transparent 1.4px);
+  background-size:26px 26px;
+  -webkit-mask-image:radial-gradient(ellipse at 50% 30%,#000 25%,transparent 72%);
+  mask-image:radial-gradient(ellipse at 50% 30%,#000 25%,transparent 72%)}
+.vignette{position:fixed;inset:0;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 0%,transparent 40%,rgba(5,6,15,.75) 100%)}
+#prog{position:fixed;top:0;left:0;height:2px;width:100%;z-index:70;
+  transform-origin:0 50%;transform:scaleX(0);
+  background:linear-gradient(90deg,var(--gold),var(--cyan),var(--violet))}
+
+.rise{opacity:0;transform:translate3d(0,18px,0) scale(.97);
+  animation:rise .72s var(--spring) forwards;animation-delay:var(--d,0ms)}
+@keyframes rise{to{opacity:1;transform:none}}
+
+.panel{position:relative;border-radius:var(--radius);background:var(--glass);
+  border:1px solid var(--edge);backdrop-filter:blur(12px);padding:18px;
+  transition:border-color .35s var(--ease),box-shadow .45s var(--ease)}
+.panel .corner{position:absolute;width:11px;height:11px;border:1px solid var(--gold);
+  opacity:0;pointer-events:none;
+  transition:opacity .35s var(--ease),transform .45s var(--spring)}
+.panel .corner.tl{top:7px;left:7px;border-right:0;border-bottom:0;transform:translate3d(-5px,-5px,0)}
+.panel .corner.br{bottom:7px;right:7px;border-left:0;border-top:0;transform:translate3d(5px,5px,0)}
+.panel:hover .corner{opacity:.65;transform:none}
+.panel:hover{border-color:var(--gold-soft)}
+
+.label{display:flex;align-items:center;gap:12px;margin:26px 2px 12px;
+  font-size:.68rem;letter-spacing:.26em;text-transform:uppercase;color:var(--ink-faint)}
+.label::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--edge),transparent)}
+
+#toast{position:fixed;left:50%;bottom:calc(28px + var(--safe-b));z-index:130;
+  transform:translate3d(-50%,26px,0);opacity:0;pointer-events:none;
+  padding:11px 20px;border-radius:999px;font-size:.79rem;letter-spacing:.05em;
+  background:var(--glass-2);border:1px solid var(--gold-soft);backdrop-filter:blur(14px);
+  box-shadow:0 14px 40px rgba(0,0,0,.55);
+  transition:transform .46s var(--spring),opacity .3s var(--ease)}
+#toast.on{transform:translate3d(-50%,0,0);opacity:1}
+
+/* ==========================================================================
+   PAGE
+   ========================================================================== */
+.wrap{position:relative;z-index:2;width:100%;max-width:1080px;margin:0 auto;
+  padding:calc(38px + var(--safe-t)) 20px calc(56px + var(--safe-b))}
+
+header{text-align:center;margin-bottom:30px}
+header h1{font-size:clamp(1.9rem,7vw,2.7rem);font-weight:600;
+  background:linear-gradient(120deg,var(--gold),#fff 45%,var(--cyan));
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+header .sub{margin-top:9px;font-size:.86rem;color:var(--ink-dim);line-height:1.6}
+header .kicker{font-size:.64rem;letter-spacing:.34em;text-transform:uppercase;
+  color:var(--ink-faint);margin-bottom:10px}
+
+.layout{display:grid;grid-template-columns:minmax(0,300px) minmax(0,1fr);gap:26px;align-items:start}
+@media (max-width:820px){.layout{grid-template-columns:1fr;gap:22px}}
+
+/* --- phone preview ------------------------------------------------------ */
+.stage{position:sticky;top:20px}
+@media (max-width:820px){.stage{position:static}}
+.phone{position:relative;width:100%;max-width:280px;margin:0 auto;
+  aspect-ratio:1220/2712;border-radius:30px;overflow:hidden;background:#000;
+  border:1px solid var(--edge);
+  box-shadow:0 26px 70px rgba(0,0,0,.65),0 0 0 1px rgba(140,160,255,.08),
+             0 0 46px -12px rgba(83,224,255,.22)}
+.phone canvas{display:block;width:100%;height:100%;touch-action:manipulation}
+.phone .hint{position:absolute;inset:0;display:grid;place-items:center;text-align:center;
+  padding:26px;font-size:.78rem;line-height:1.7;color:var(--ink-faint);
+  background:linear-gradient(160deg,rgba(20,26,54,.5),rgba(5,6,15,.8))}
+.phone.ready .hint{display:none}
+
+.stagerow{display:flex;gap:8px;justify-content:center;margin-top:14px;flex-wrap:wrap}
+.pill{padding:8px 15px;border-radius:999px;font-size:.73rem;letter-spacing:.06em;
+  border:1px solid var(--edge);background:var(--glass);
+  transition:transform .4s var(--spring),border-color .3s var(--ease),color .3s var(--ease)}
+.pill:hover{border-color:var(--gold-soft);transform:translateY(-2px)}
+.pill.on{border-color:var(--gold-soft);color:var(--gold);background:var(--glass-2)}
+.caption{margin-top:12px;text-align:center;font-size:.7rem;color:var(--ink-faint);line-height:1.6}
+
+/* --- controls ----------------------------------------------------------- */
+.drop{display:block;width:100%;border-radius:var(--radius);padding:24px 18px;text-align:center;
+  border:1px dashed var(--gold-soft);background:linear-gradient(140deg,rgba(227,194,125,.10),
+  rgba(139,123,255,.07) 55%,rgba(20,26,54,.6));cursor:pointer;
+  transition:transform .45s var(--spring),border-color .3s var(--ease),background .3s var(--ease)}
+.drop:hover,.drop.over{transform:translateY(-2px);border-color:var(--gold);
+  background:linear-gradient(140deg,rgba(227,194,125,.18),rgba(139,123,255,.10) 55%,rgba(20,26,54,.7))}
+.drop .big{font-family:'Cinzel',serif;font-size:1rem;font-weight:600;color:var(--gold);display:block}
+.drop .small{display:block;margin-top:6px;font-size:.74rem;color:var(--ink-faint);line-height:1.6}
+
+.knob{margin-bottom:15px}
+.knob .top{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:5px}
+.knob .name{font-size:.8rem;color:var(--ink);font-weight:400}
+.knob .val{font-size:.72rem;color:var(--cyan);font-variant-numeric:tabular-nums}
+.knob .note{font-size:.68rem;color:var(--ink-faint);margin-top:-2px;margin-bottom:5px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:3px;border-radius:2px;
+  background:linear-gradient(90deg,var(--gold) var(--fill,50%),rgba(140,160,255,.18) var(--fill,50%));
+  outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+  background:var(--gold);cursor:pointer;box-shadow:0 0 0 4px rgba(227,194,125,.16);
+  transition:transform .3s var(--spring)}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.18)}
+input[type=range]::-moz-range-thumb{width:15px;height:15px;border:none;border-radius:50%;
+  background:var(--gold);cursor:pointer}
+
+.swatches{display:flex;gap:9px;flex-wrap:wrap;margin:8px 0 4px}
+.sw{width:26px;height:26px;border-radius:50%;border:1px solid var(--edge);
+  transition:transform .35s var(--spring)}
+.sw:hover{transform:scale(1.14)}
+.sw.on{border:2px solid var(--gold);transform:scale(1.1)}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}
+@media (max-width:480px){.grid2{grid-template-columns:1fr}}
+
+.actions{display:grid;gap:10px;margin-top:20px}
+.btn{position:relative;width:100%;padding:14px 18px;border-radius:14px;overflow:hidden;
+  font-size:.85rem;letter-spacing:.05em;border:1px solid var(--edge);background:var(--glass);
+  transition:transform .45s var(--spring),border-color .3s var(--ease),box-shadow .4s var(--ease)}
+.btn:hover:not(:disabled){transform:translateY(-2px);border-color:var(--gold-soft);
+  box-shadow:0 14px 34px rgba(0,0,0,.45)}
+.btn:active:not(:disabled){transform:scale(.985)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn.primary{font-family:'Cinzel',serif;font-weight:600;color:var(--gold);
+  border-color:var(--gold-soft);
+  background:linear-gradient(140deg,rgba(227,194,125,.18),rgba(139,123,255,.10) 55%,rgba(20,26,54,.65))}
+
+.bar{height:3px;border-radius:2px;background:rgba(140,160,255,.16);overflow:hidden;margin-top:12px}
+.bar i{display:block;height:100%;width:0;border-radius:2px;
+  background:linear-gradient(90deg,var(--gold),var(--cyan));
+  transform-origin:0 50%;transition:width .25s var(--ease)}
+.status{margin-top:8px;font-size:.72rem;color:var(--cyan);letter-spacing:.04em;min-height:1em}
+
+.note{font-size:.72rem;color:var(--ink-faint);line-height:1.75;margin-top:14px}
+.note b{color:var(--ink-dim);font-weight:400}
+footer{margin-top:40px;text-align:center;font-size:.7rem;color:var(--ink-faint);line-height:1.8}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;
+    transition-duration:.01ms!important;scroll-behavior:auto!important}
+  .rise{opacity:1;transform:none}
+}
+</style>
+</head>
+<body>
+
+<div class="aurora"><i></i><i></i><i></i></div>
+<div class="dotgrid"></div>
+<div class="vignette"></div>
+<div id="prog"></div>
+
+<div class="wrap">
+
+  <header class="rise" style="--d:0ms">
+    <div class="kicker">Ink Wallpaper Studio</div>
+    <h1>SUMI</h1>
+    <p class="sub">Drop in any picture. It gets traced into glowing outlines on pure black,<br>
+      and you download both states as wallpapers for your phone.</p>
+  </header>
+
+  <div class="layout">
+
+    <!-- ============ preview ============ -->
+    <div class="stage rise" style="--d:80ms">
+      <div class="phone" id="phone">
+        <canvas id="view"></canvas>
+        <div class="hint">Your wallpaper<br>appears here<br><br>Tap once for ink,<br>twice for colour</div>
+      </div>
+      <div class="stagerow">
+        <button class="pill on" id="pillInk">Ink</button>
+        <button class="pill" id="pillColor">Colour</button>
+        <button class="pill" id="pillReplay">Redraw</button>
+      </div>
+      <p class="caption">Tap the phone: once falls back to ink, twice blooms into colour from the point you touched.</p>
+    </div>
+
+    <!-- ============ controls ============ -->
+    <div>
+      <div class="rise" style="--d:140ms">
+        <label class="drop" id="drop">
+          <input type="file" id="file" accept="image/*" hidden>
+          <span class="big">Choose a picture</span>
+          <span class="small">Or drag one here. Nothing is uploaded — the tracing<br>runs entirely inside your browser.</span>
+        </label>
+        <div class="bar"><i id="barFill"></i></div>
+        <div class="status" id="status"></div>
+      </div>
+
+      <div class="label rise" style="--d:200ms">Line</div>
+      <div class="panel rise" style="--d:220ms">
+        <span class="corner tl"></span><span class="corner br"></span>
+        <div class="grid2">
+          <div class="knob" data-k="detail">
+            <div class="top"><span class="name">Detail</span><span class="val"></span></div>
+            <div class="note">Re-traces the picture</div>
+            <input type="range" min="0" max="1" step="0.01" value="0.55">
+          </div>
+          <div class="knob" data-k="thickness">
+            <div class="top"><span class="name">Thickness</span><span class="val"></span></div>
+            <input type="range" min="0.4" max="6" step="0.1" value="1.7">
+          </div>
+          <div class="knob" data-k="brightness">
+            <div class="top"><span class="name">Brightness</span><span class="val"></span></div>
+            <input type="range" min="0" max="2" step="0.02" value="1">
+          </div>
+          <div class="knob" data-k="glow">
+            <div class="top"><span class="name">Glow</span><span class="val"></span></div>
+            <input type="range" min="0" max="2" step="0.02" value="1">
+          </div>
+        </div>
+        <div style="font-size:.8rem;margin-top:6px">Ink colour</div>
+        <div class="swatches" id="swInk"></div>
+        <div style="font-size:.8rem;margin-top:10px">Accent</div>
+        <div class="swatches" id="swAccent"></div>
+      </div>
+
+      <div class="label rise" style="--d:260ms">Colour</div>
+      <div class="panel rise" style="--d:280ms">
+        <span class="corner tl"></span><span class="corner br"></span>
+        <div class="grid2">
+          <div class="knob" data-k="grayscale">
+            <div class="top"><span class="name">Greyscale</span><span class="val"></span></div>
+            <div class="note">1.00 is a pure manga read</div>
+            <input type="range" min="0" max="1" step="0.01" value="0">
+          </div>
+          <div class="knob" data-k="saturation">
+            <div class="top"><span class="name">Saturation</span><span class="val"></span></div>
+            <input type="range" min="0" max="2.2" step="0.02" value="1.35">
+          </div>
+          <div class="knob" data-k="contrast">
+            <div class="top"><span class="name">Contrast</span><span class="val"></span></div>
+            <input type="range" min="0.6" max="1.8" step="0.02" value="1.1">
+          </div>
+          <div class="knob" data-k="exposure">
+            <div class="top"><span class="name">Exposure</span><span class="val"></span></div>
+            <input type="range" min="0.3" max="1.6" step="0.02" value="1">
+          </div>
+        </div>
+      </div>
+
+      <div class="label rise" style="--d:320ms">Curved edge &amp; clock</div>
+      <div class="panel rise" style="--d:340ms">
+        <span class="corner tl"></span><span class="corner br"></span>
+        <div class="grid2">
+          <div class="knob" data-k="edgeGlow">
+            <div class="top"><span class="name">Edge light</span><span class="val"></span></div>
+            <input type="range" min="0" max="1" step="0.01" value="0.75">
+          </div>
+          <div class="knob" data-k="edgeFalloff">
+            <div class="top"><span class="name">Curve falloff</span><span class="val"></span></div>
+            <div class="note">Keeps art off the bend</div>
+            <input type="range" min="0" max="1" step="0.01" value="0.55">
+          </div>
+          <div class="knob" data-k="edgeRadius">
+            <div class="top"><span class="name">Corner radius</span><span class="val"></span></div>
+            <input type="range" min="0" max="90" step="1" value="52">
+          </div>
+          <div class="knob" data-k="clockY">
+            <div class="top"><span class="name">Clock position</span><span class="val"></span></div>
+            <input type="range" min="0.05" max="0.85" step="0.01" value="0.2">
+          </div>
+        </div>
+        <div class="stagerow" style="justify-content:flex-start;margin-top:4px">
+          <button class="pill on" id="pillClock">Clock on</button>
+          <button class="pill" id="pillPreset">Edge 60 Pro preset</button>
+        </div>
+      </div>
+
+      <div class="actions rise" style="--d:400ms">
+        <button class="btn primary" id="dlInk" disabled>Download ink wallpaper</button>
+        <button class="btn" id="dlColor" disabled>Download colour wallpaper</button>
+        <button class="btn" id="install" hidden>Install Sumi on this phone</button>
+      </div>
+
+      <p class="note rise" style="--d:440ms">
+        <b>How to use these on the Edge 60 Pro.</b> Download both. Long-press the home
+        screen &rarr; Wallpaper &amp; style, set the <b>ink</b> one as your lock screen and
+        the <b>colour</b> one as your home screen. Your phone keeps full control of the
+        lock screen, notifications and security — this page only makes the images.
+        Exported at <span id="dims">1220 &times; 2712</span>.
+      </p>
+    </div>
+  </div>
+
+  <footer>
+    Runs offline once installed. No uploads, no account, no permissions.<br>
+    Built for the Motorola Edge 60 Pro.
+  </footer>
+</div>
+
+<div id="toast"></div>
+
+<!-- ==========================================================================
+     Tracing worker. Kept in a non-executing script tag so the whole app stays
+     one file; it is turned into a real Worker with a Blob URL at runtime, with
+     a main-thread fallback if that is blocked.
+     ========================================================================== -->
+<script id="workerSrc" type="text/js-worker">
+// ---------------------------------------------------------------------------
+// Port of EdgeExtractor.kt. Same order of operations, same constants:
+// luminance -> gaussian -> sobel(+dark bias) -> non-maximum suppression ->
+// adaptive percentile hysteresis -> Zhang-Suen thinning -> walk -> RDP.
+// ---------------------------------------------------------------------------
+var DARK_BIAS = 0.45, SIMPLIFY_EPS = 0.85, MAX_POINTS = 26000;
+var NX = [-1, 0, 1, 1, 1, 0, -1, -1];
+var NY = [-1, -1, -1, 0, 1, 1, 1, 0];
+
+function gaussian(src, w, h, sigma) {
+  if (sigma <= 0.05) return src.slice();
+  var r = Math.max(1, Math.ceil(sigma * 3));
+  var k = new Float32Array(2 * r + 1), sum = 0, i, j;
+  for (i = -r; i <= r; i++) { var v = Math.exp(-(i * i) / (2 * sigma * sigma)); k[i + r] = v; sum += v; }
+  for (i = 0; i < k.length; i++) k[i] /= sum;
+  var tmp = new Float32Array(w * h), out = new Float32Array(w * h), x, y, acc, p;
+  for (y = 0; y < h; y++) {
+    var row = y * w;
+    for (x = 0; x < w; x++) {
+      acc = 0;
+      for (i = -r; i <= r; i++) { p = x + i; if (p < 0) p = 0; else if (p >= w) p = w - 1; acc += src[row + p] * k[i + r]; }
+      tmp[row + x] = acc;
+    }
+  }
+  for (y = 0; y < h; y++) {
+    for (x = 0; x < w; x++) {
+      acc = 0;
+      for (i = -r; i <= r; i++) { p = y + i; if (p < 0) p = 0; else if (p >= h) p = h - 1; acc += tmp[p * w + x] * k[i + r]; }
+      out[y * w + x] = acc;
+    }
+  }
+  return out;
+}
+
+function thin(ink, w, h) {
+  var doomed = [], pass, step, x, y, i, changed;
+  for (pass = 0; pass < 12; pass++) {
+    changed = false;
+    for (step = 0; step < 2; step++) {
+      doomed.length = 0;
+      for (y = 1; y < h - 1; y++) {
+        var row = y * w;
+        for (x = 1; x < w - 1; x++) {
+          i = row + x;
+          if (!ink[i]) continue;
+          var p2 = ink[i - w], p3 = ink[i - w + 1], p4 = ink[i + 1], p5 = ink[i + w + 1];
+          var p6 = ink[i + w], p7 = ink[i + w - 1], p8 = ink[i - 1], p9 = ink[i - w - 1];
+          var b = p2 + p3 + p4 + p5 + p6 + p7 + p8 + p9;
+          if (b < 2 || b > 6) continue;
+          var a = 0;
+          if (!p2 && p3) a++; if (!p3 && p4) a++; if (!p4 && p5) a++; if (!p5 && p6) a++;
+          if (!p6 && p7) a++; if (!p7 && p8) a++; if (!p8 && p9) a++; if (!p9 && p2) a++;
+          if (a !== 1) continue;
+          var ok = step === 0
+            ? !(p2 && p4 && p6) && !(p4 && p6 && p8)
+            : !(p2 && p4 && p8) && !(p2 && p6 && p8);
+          if (ok) doomed.push(i);
+        }
+      }
+      if (doomed.length) { changed = true; for (i = 0; i < doomed.length; i++) ink[doomed[i]] = 0; }
+    }
+    if (!changed) return;
+  }
+}
+
+function polyLength(p) {
+  var len = 0;
+  for (var i = 2; i < p.length; i += 2) {
+    var dx = p[i] - p[i - 2], dy = p[i + 1] - p[i - 1];
+    len += Math.sqrt(dx * dx + dy * dy);
+  }
+  return len;
+}
+
+function rdp(pts, eps) {
+  var count = pts.length / 2;
+  if (count < 3) return pts;
+  var keep = new Uint8Array(count);
+  keep[0] = 1; keep[count - 1] = 1;
+  var stack = [[0, count - 1]];
+  while (stack.length) {
+    var seg = stack.pop(), first = seg[0], last = seg[1];
+    if (last <= first + 1) continue;
+    var x1 = pts[first * 2], y1 = pts[first * 2 + 1];
+    var x2 = pts[last * 2], y2 = pts[last * 2 + 1];
+    var dx = x2 - x1, dy = y2 - y1, norm = Math.sqrt(dx * dx + dy * dy);
+    var maxD = -1, maxI = -1;
+    for (var i = first + 1; i < last; i++) {
+      var px = pts[i * 2], py = pts[i * 2 + 1], d;
+      if (norm < 1e-6) { var ax = px - x1, ay = py - y1; d = Math.sqrt(ax * ax + ay * ay); }
+      else d = Math.abs(dy * px - dx * py + x2 * y1 - y2 * x1) / norm;
+      if (d > maxD) { maxD = d; maxI = i; }
+    }
+    if (maxD > eps && maxI > 0) { keep[maxI] = 1; stack.push([first, maxI]); stack.push([maxI, last]); }
+  }
+  var kept = 0, n;
+  for (n = 0; n < count; n++) if (keep[n]) kept++;
+  var out = new Float32Array(kept * 2), idx = 0;
+  for (n = 0; n < count; n++) { if (!keep[n]) continue; out[idx++] = pts[n * 2]; out[idx++] = pts[n * 2 + 1]; }
+  return out;
+}
+
+function trace(ink, w, h) {
+  var n = w * h, visited = new Uint8Array(n), out = [], i, k;
+
+  function degree(idx) {
+    var x = idx % w, y = (idx / w) | 0, c = 0;
+    for (var q = 0; q < 8; q++) {
+      var nx = x + NX[q], ny = y + NY[q];
+      if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+      if (ink[ny * w + nx]) c++;
+    }
+    return c;
+  }
+
+  function walk(start, sink) {
+    var cur = start, dx = 0, dy = 0;
+    for (;;) {
+      var cx = cur % w, cy = (cur / w) | 0, best = -1, bestScore = -10;
+      for (var q = 0; q < 8; q++) {
+        var nx = cx + NX[q], ny = cy + NY[q];
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        var ni = ny * w + nx;
+        if (!ink[ni] || visited[ni]) continue;
+        var straight = (dx === 0 && dy === 0) ? 0 : (NX[q] * dx + NY[q] * dy);
+        var score = straight + ((NX[q] === 0 || NY[q] === 0) ? 0.35 : 0);
+        if (score > bestScore) { bestScore = score; best = ni; }
+      }
+      if (best < 0) return;
+      dx = (best % w) - cx; dy = ((best / w) | 0) - cy;
+      visited[best] = 1; sink.push(best); cur = best;
+    }
+  }
+
+  function emit(list) {
+    if (list.length < 2) return;
+    var arr = new Float32Array(list.length * 2), idx = 0;
+    for (var q = 0; q < list.length; q++) {
+      arr[idx++] = (list[q] % w) + 0.5;
+      arr[idx++] = ((list[q] / w) | 0) + 0.5;
+    }
+    out.push(arr);
+  }
+
+  for (i = 0; i < n; i++) {
+    if (!ink[i] || visited[i] || degree(i) !== 1) continue;
+    visited[i] = 1;
+    var tail = [i];
+    walk(i, tail);
+    emit(tail);
+  }
+  for (i = 0; i < n; i++) {
+    if (!ink[i] || visited[i]) continue;
+    visited[i] = 1;
+    var fwd = [], bwd = [];
+    walk(i, fwd);
+    walk(i, bwd);
+    var whole = [];
+    for (k = bwd.length - 1; k >= 0; k--) whole.push(bwd[k]);
+    whole.push(i);
+    for (k = 0; k < fwd.length; k++) whole.push(fwd[k]);
+    emit(whole);
+  }
+  return out;
+}
+
+function extract(rgba, w, h, detail, post) {
+  var n = w * h, i, x, y;
+  var lum = new Float32Array(n);
+  for (i = 0; i < n; i++) {
+    var p = i * 4;
+    lum[i] = (0.299 * rgba[p] + 0.587 * rgba[p + 1] + 0.114 * rgba[p + 2]) / 255;
+  }
+  post(0.12, 'Reading pixels');
+
+  var sigma = 1.35 - 0.65 * Math.min(Math.max(detail, 0), 1);
+  var sm = gaussian(lum, w, h, sigma);
+  post(0.28, 'Finding edges');
+
+  var mag = new Float32Array(n), dir = new Uint8Array(n), maxMag = 1e-6;
+  for (y = 1; y < h - 1; y++) {
+    var row = y * w;
+    for (x = 1; x < w - 1; x++) {
+      i = row + x;
+      var tl = sm[i - w - 1], t = sm[i - w], tr = sm[i - w + 1];
+      var l = sm[i - 1], r = sm[i + 1];
+      var bl = sm[i + w - 1], b = sm[i + w], br = sm[i + w + 1];
+      var gx = (tr + 2 * r + br) - (tl + 2 * l + bl);
+      var gy = (bl + 2 * b + br) - (tl + 2 * t + tr);
+      var m = Math.sqrt(gx * gx + gy * gy) * (1 + DARK_BIAS * (1 - sm[i]));
+      mag[i] = m; if (m > maxMag) maxMag = m;
+      var deg = Math.atan2(gy, gx) * 180 / Math.PI;
+      if (deg < 0) deg += 180;
+      if (deg >= 180) deg -= 180;
+      dir[i] = (deg < 22.5 || deg >= 157.5) ? 0 : deg < 67.5 ? 1 : deg < 112.5 ? 2 : 3;
+    }
+  }
+  post(0.46, 'Thinning ridges');
+
+  var inv = 1 / maxMag, ridge = new Float32Array(n);
+  for (y = 1; y < h - 1; y++) {
+    var row2 = y * w;
+    for (x = 1; x < w - 1; x++) {
+      i = row2 + x;
+      var mm = mag[i];
+      if (mm <= 0) continue;
+      var a1, a2, d = dir[i];
+      if (d === 0) { a1 = mag[i - 1]; a2 = mag[i + 1]; }
+      else if (d === 1) { a1 = mag[i - w + 1]; a2 = mag[i + w - 1]; }
+      else if (d === 2) { a1 = mag[i - w]; a2 = mag[i + w]; }
+      else { a1 = mag[i - w - 1]; a2 = mag[i + w + 1]; }
+      if (mm >= a1 && mm >= a2) ridge[i] = mm * inv;
+    }
+  }
+
+  // Thresholds are percentiles of this image's own edge histogram, so a dark
+  // anime key-art and a bright photo both land on a sane stroke count.
+  var hist = new Int32Array(257), ridgeCount = 0;
+  for (i = 0; i < n; i++) {
+    var v = ridge[i];
+    if (v > 0) { var bn = (v * 256) | 0; if (bn > 256) bn = 256; hist[bn]++; ridgeCount++; }
+  }
+  var keepFrac = 0.030 + 0.150 * Math.pow(Math.min(Math.max(detail, 0), 1), 1.4);
+  var target = Math.max(1, Math.round(ridgeCount * keepFrac)), acc = 0, hiBin = 256;
+  for (var bin = 256; bin >= 0; bin--) { acc += hist[bin]; if (acc >= target) { hiBin = bin; break; } }
+  var hi = Math.min(0.95, Math.max(0.02, hiBin / 256)), lo = hi * 0.42;
+
+  var ink = new Uint8Array(n), stack = new Int32Array(n), sp = 0;
+  for (i = 0; i < n; i++) {
+    if (ridge[i] < hi || ink[i]) continue;
+    ink[i] = 1; stack[sp++] = i;
+    while (sp > 0) {
+      var cur = stack[--sp], cx = cur % w, cy = (cur / w) | 0;
+      for (var q = 0; q < 8; q++) {
+        var nx = cx + NX[q], ny = cy + NY[q];
+        if (nx < 1 || ny < 1 || nx >= w - 1 || ny >= h - 1) continue;
+        var ni = ny * w + nx;
+        if (!ink[ni] && ridge[ni] >= lo) { ink[ni] = 1; if (sp < n) stack[sp++] = ni; }
+      }
+    }
+  }
+  post(0.66, 'Cleaning strokes');
+
+  thin(ink, w, h);
+  post(0.82, 'Walking contours');
+
+  var raw = trace(ink, w, h);
+  post(0.93, 'Simplifying');
+
+  // Long strokes are the look; short ones are compression speckle.
+  var minLen = 20 - 11 * Math.min(Math.max(detail, 0), 1);
+  var simplified = [];
+  for (i = 0; i < raw.length; i++) {
+    var poly = raw[i];
+    if (poly.length < 4) continue;
+    if (polyLength(poly) < minLen) continue;
+    var s = rdp(poly, SIMPLIFY_EPS);
+    if (s.length >= 4) simplified.push(s);
+  }
+  simplified.sort(function (a, b) { return b.length - a.length; });
+
+  var kept = [], total = 0;
+  for (i = 0; i < simplified.length; i++) {
+    var pts = simplified[i].length / 2;
+    if (total + pts > MAX_POINTS) continue;
+    kept.push(simplified[i]);
+    total += pts;
+  }
+
+  var norm = [];
+  for (i = 0; i < kept.length; i++) {
+    var c = kept[i], o = new Float32Array(c.length);
+    for (var j = 0; j < c.length; j += 2) {
+      o[j] = Math.min(1, Math.max(0, c[j] / w));
+      o[j + 1] = Math.min(1, Math.max(0, c[j + 1] / h));
+    }
+    norm.push(o);
+  }
+  return { contours: norm, aspect: w / h, points: total };
+}
+
+self.onmessage = function (e) {
+  var d = e.data;
+  var post = function (p, msg) { self.postMessage({ type: 'progress', progress: p, message: msg }); };
+  try {
+    var res = extract(d.rgba, d.w, d.h, d.detail, post);
+    var buffers = res.contours.map(function (c) { return c.buffer; });
+    self.postMessage({ type: 'done', contours: res.contours, aspect: res.aspect, points: res.points }, buffers);
+  } catch (err) {
+    self.postMessage({ type: 'error', message: String(err && err.message || err) });
+  }
+};
+</script>
+
+<script>
+(function () {
+  'use strict';
+
+  // =========================================================================
+  // State
+  // =========================================================================
+  var S = {
+    detail: 0.55, thickness: 1.7, brightness: 1, glow: 1,
+    grayscale: 0, saturation: 1.35, contrast: 1.1, exposure: 1,
+    edgeGlow: 0.75, edgeFalloff: 0.55, edgeRadius: 52, clockY: 0.2,
+    lineColor: '#e8f3ff', accentColor: '#6fd0ff', showClock: true
+  };
+
+  var art = null;          // { contours, aspect }
+  var sourceBitmap = null; // the picked image, full size
+  var inkCache = null;     // offscreen canvas of the ink layer at preview size
+  var inkKey = '';
+
+  var mode = 'ink';
+  var colorP = 0, targetP = 0, revealP = 1;
+  var rip = { x: 0.5, y: 0.42 };
+  var last = 0;
+
+  var EXPORT_W = 1220, EXPORT_H = 2712;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var view = $('view'), ctx = view.getContext('2d');
+  var phone = $('phone');
+
+  function toast(msg) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.classList.add('on');
+    clearTimeout(t._t);
+    t._t = setTimeout(function () { t.classList.remove('on'); }, 2600);
+  }
+
+  // =========================================================================
+  // Controls
+  // =========================================================================
+  var FORMAT = {
+    detail: function (v) { return v.toFixed(2); },
+    thickness: function (v) { return v.toFixed(1) + ' px'; },
+    edgeRadius: function (v) { return v.toFixed(0) + ' dp'; },
+    clockY: function (v) { return Math.round(v * 100) + '%'; }
+  };
+
+  function paintRange(input) {
+    var min = parseFloat(input.min), max = parseFloat(input.max);
+    var pct = ((parseFloat(input.value) - min) / (max - min)) * 100;
+    input.style.setProperty('--fill', pct + '%');
+  }
+
+  var retraceTimer = null;
+  Array.prototype.forEach.call(document.querySelectorAll('.knob'), function (knob) {
+    var key = knob.dataset.k;
+    var input = knob.querySelector('input');
+    var out = knob.querySelector('.val');
+    function sync() {
+      var v = parseFloat(input.value);
+      S[key] = v;
+      out.textContent = (FORMAT[key] || function (n) { return n.toFixed(2); })(v);
+      paintRange(input);
+    }
+    input.addEventListener('input', function () {
+      sync();
+      if (key === 'detail') {
+        clearTimeout(retraceTimer);
+        retraceTimer = setTimeout(function () { if (sourceBitmap) run(sourceBitmap); }, 450);
+      } else if (key === 'thickness' || key === 'glow') {
+        inkKey = '';
+      }
+    });
+    sync();
+  });
+
+  function swatchRow(hostId, colors, key) {
+    var host = $(hostId);
+    colors.forEach(function (c) {
+      var b = document.createElement('button');
+      b.className = 'sw' + (c === S[key] ? ' on' : '');
+      b.style.background = c;
+      b.title = c;
+      b.addEventListener('click', function () {
+        S[key] = c;
+        inkKey = '';
+        Array.prototype.forEach.call(host.children, function (el) { el.classList.remove('on'); });
+        b.classList.add('on');
+      });
+      host.appendChild(b);
+    });
+  }
+  swatchRow('swInk', ['#ffffff', '#e8f3ff', '#bfe9ff', '#e3c27d', '#ffb4e6', '#b6ffd9'], 'lineColor');
+  swatchRow('swAccent', ['#6fd0ff', '#8b7bff', '#00e5c0', '#e3c27d', '#ff5fa2', '#ff8a3d'], 'accentColor');
+
+  $('pillInk').addEventListener('click', function () { setMode('ink', 0.5, 0.42); });
+  $('pillColor').addEventListener('click', function () { setMode('color', 0.5, 0.42); });
+  $('pillReplay').addEventListener('click', function () { revealP = 0; });
+  $('pillClock').addEventListener('click', function () {
+    S.showClock = !S.showClock;
+    this.classList.toggle('on', S.showClock);
+    this.textContent = S.showClock ? 'Clock on' : 'Clock off';
+  });
+  $('pillPreset').addEventListener('click', function () {
+    setKnob('edgeGlow', 0.75); setKnob('edgeFalloff', 0.55); setKnob('edgeRadius', 52);
+    toast('Edge 60 Pro curve preset applied');
+  });
+
+  function setKnob(key, value) {
+    var knob = document.querySelector('.knob[data-k="' + key + '"]');
+    if (!knob) return;
+    var input = knob.querySelector('input');
+    input.value = value;
+    input.dispatchEvent(new Event('input'));
+  }
+
+  function setMode(next, x, y) {
+    mode = next;
+    targetP = next === 'color' ? 1 : 0;
+    rip.x = x; rip.y = y;
+    $('pillInk').classList.toggle('on', next === 'ink');
+    $('pillColor').classList.toggle('on', next === 'color');
+  }
+
+  // tap the phone: one for ink, two for colour
+  var tapTimer = null;
+  view.addEventListener('click', function (e) {
+    if (!art) return;
+    var r = view.getBoundingClientRect();
+    var x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+    if (tapTimer) {
+      clearTimeout(tapTimer); tapTimer = null;
+      setMode(mode === 'color' ? 'ink' : 'color', x, y);
+    } else {
+      tapTimer = setTimeout(function () {
+        tapTimer = null;
+        if (mode === 'color') setMode('ink', x, y); else revealP = 0;
+      }, 260);
+    }
+  });
+
+  // =========================================================================
+  // Extraction
+  // =========================================================================
+  var WORK_PIXELS = 900000;
+
+  function makeWorker() {
+    try {
+      var src = $('workerSrc').textContent;
+      var url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+      return new Worker(url);
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function setProgress(p, msg) {
+    $('barFill').style.width = Math.round(p * 100) + '%';
+    $('status').textContent = msg || '';
+  }
+
+  function run(bitmap) {
+    var area = bitmap.width * bitmap.height;
+    var scale = area > WORK_PIXELS ? Math.sqrt(WORK_PIXELS / area) : 1;
+    var w = Math.max(64, Math.round(bitmap.width * scale));
+    var h = Math.max(64, Math.round(bitmap.height * scale));
+
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    var g = c.getContext('2d', { willReadFrequently: true });
+    g.drawImage(bitmap, 0, 0, w, h);
+    var data = g.getImageData(0, 0, w, h);
+
+    setProgress(0.05, 'Preparing');
+    var worker = makeWorker();
+    if (!worker) { setProgress(0, 'Could not start the tracer'); return; }
+
+    worker.onmessage = function (e) {
+      var m = e.data;
+      if (m.type === 'progress') { setProgress(m.progress, m.message); return; }
+      if (m.type === 'error') { setProgress(0, 'Tracing failed: ' + m.message); worker.terminate(); return; }
+      art = { contours: m.contours, aspect: m.aspect };
+      inkKey = '';
+      revealP = 0;
+      phone.classList.add('ready');
+      $('dlInk').disabled = false;
+      $('dlColor').disabled = false;
+      setProgress(1, m.points.toLocaleString() + ' points traced');
+      setTimeout(function () { setProgress(0, ''); }, 2200);
+      worker.terminate();
+    };
+    worker.postMessage({ rgba: data.data, w: w, h: h, detail: S.detail }, [data.data.buffer]);
+  }
+
+  // =========================================================================
+  // File input
+  // =========================================================================
+  function load(file) {
+    if (!file || !/^image\//.test(file.type)) { toast('That is not an image'); return; }
+    setProgress(0.02, 'Decoding');
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function () {
+      sourceBitmap = img;
+      run(img);
+    };
+    img.onerror = function () { setProgress(0, 'Could not read that image'); URL.revokeObjectURL(url); };
+    img.src = url;
+  }
+
+  $('file').addEventListener('change', function (e) { if (e.target.files[0]) load(e.target.files[0]); });
+  var drop = $('drop');
+  ['dragenter', 'dragover'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add('over'); });
+  });
+  ['dragleave', 'drop'].forEach(function (ev) {
+    drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove('over'); });
+  });
+  drop.addEventListener('drop', function (e) {
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) load(e.dataTransfer.files[0]);
+  });
+
+  // =========================================================================
+  // Rendering
+  // =========================================================================
+  function coverBox(vw, vh, aspect) {
+    var s = Math.max(vw / aspect, vh);
+    var dw = aspect * s, dh = s;
+    return { left: (vw - dw) / 2, top: (vh - dh) / 2, w: dw, h: dh };
+  }
+
+  // Quadratics through the interior points: the difference between a stroke
+  // that reads as drawn and one that reads as edge-detector output.
+  function tracePaths(g, box) {
+    var cs = art.contours;
+    g.beginPath();
+    for (var i = 0; i < cs.length; i++) {
+      var c = cs[i], n = c.length / 2;
+      if (n < 2) continue;
+      var x0 = box.left + c[0] * box.w, y0 = box.top + c[1] * box.h;
+      g.moveTo(x0, y0);
+      if (n === 2) { g.lineTo(box.left + c[2] * box.w, box.top + c[3] * box.h); continue; }
+      for (var k = 1; k < n - 1; k++) {
+        var cx = box.left + c[k * 2] * box.w, cy = box.top + c[k * 2 + 1] * box.h;
+        var nx = box.left + c[k * 2 + 2] * box.w, ny = box.top + c[k * 2 + 3] * box.h;
+        g.quadraticCurveTo(cx, cy, (cx + nx) / 2, (cy + ny) / 2);
+      }
+      g.lineTo(box.left + c[(n - 1) * 2] * box.w, box.top + c[(n - 1) * 2 + 1] * box.h);
+    }
+  }
+
+  /**
+   * Renders the ink layer once into an offscreen canvas. Every frame then costs
+   * a single drawImage instead of re-stroking tens of thousands of points.
+   */
+  function buildInk(w, h) {
+    var c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    var g = c.getContext('2d');
+    if (!art) return c;
+    var box = coverBox(w, h, art.aspect);
+    var stroke = Math.max(0.5, S.thickness * (w / 1080));
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+
+    tracePaths(g, box);
+
+    if (S.glow > 0.01) {
+      g.shadowColor = S.accentColor;
+      g.strokeStyle = S.accentColor;
+      g.shadowBlur = 16 * S.glow * (w / 1080) + stroke;
+      g.lineWidth = stroke * 1.5;
+      g.globalAlpha = 0.55;
+      g.stroke();
+      g.shadowBlur = 5 * S.glow * (w / 1080) + stroke;
+      g.globalAlpha = 0.8;
+      g.stroke();
+    }
+    g.shadowBlur = 0;
+    g.globalAlpha = 1;
+    g.strokeStyle = S.lineColor;
+    g.lineWidth = stroke;
+    g.stroke();
+    return c;
+  }
+
+  function ensureInk(w, h) {
+    var key = w + 'x' + h + '|' + S.thickness + '|' + S.glow + '|' + S.lineColor + '|' + S.accentColor;
+    if (inkCache && key === inkKey) return inkCache;
+    inkCache = buildInk(w, h);
+    inkKey = key;
+    return inkCache;
+  }
+
+  function ease(t) {
+    var x = Math.min(1, Math.max(0, t));
+    return x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+  }
+
+  function drawScene(g, W, H, opts) {
+    var dpr = opts.unit;             // 1 unit = 1 "dp" at this render size
+    var p = ease(opts.colorP);
+
+    g.fillStyle = '#000';
+    g.fillRect(0, 0, W, H);
+    if (!art) return;
+
+    // --- colour layer -----------------------------------------------------
+    if (opts.colorP > 0.001 && sourceBitmap) {
+      var box = coverBox(W, H, art.aspect);
+      g.save();
+      g.filter = 'saturate(' + S.saturation + ') contrast(' + S.contrast +
+                 ') brightness(' + S.exposure + ') grayscale(' + S.grayscale + ')';
+      g.drawImage(sourceBitmap, box.left, box.top, box.w, box.h);
+      g.filter = 'none';
+      g.restore();
+
+      if (p < 0.999) {
+        var cx = rip.x * W, cy = rip.y * H;
+        var maxR = Math.hypot(Math.max(cx, W - cx), Math.max(cy, H - cy)) * 1.02;
+        var r = Math.max(1, maxR * p);
+        var grd = g.createRadialGradient(cx, cy, 0, cx, cy, r);
+        grd.addColorStop(0, 'rgba(0,0,0,0)');
+        grd.addColorStop(0.86, 'rgba(0,0,0,0)');
+        grd.addColorStop(1, 'rgba(0,0,0,1)');
+        g.fillStyle = grd;
+        g.fillRect(0, 0, W, H);
+
+        var rimA = Math.sin(p * Math.PI) * 0.8;
+        if (rimA > 0.02) {
+          g.save();
+          g.globalCompositeOperation = 'lighter';
+          g.globalAlpha = rimA;
+          g.strokeStyle = S.accentColor;
+          g.lineWidth = 2 * dpr;
+          g.beginPath(); g.arc(cx, cy, r, 0, Math.PI * 2); g.stroke();
+          g.globalAlpha = rimA * 0.35;
+          g.lineWidth = 10 * dpr;
+          g.beginPath(); g.arc(cx, cy, r * 0.985, 0, Math.PI * 2); g.stroke();
+          g.restore();
+        }
+      }
+    }
+
+    // --- ink --------------------------------------------------------------
+    var ink = ensureInk(W, H);
+    g.save();
+    g.globalCompositeOperation = 'lighter';
+    g.globalAlpha = Math.min(1, S.brightness) * (1 - 0.35 * p);
+    g.drawImage(ink, 0, 0);
+    g.restore();
+
+    // --- draw-on wipe -----------------------------------------------------
+    if (opts.revealP < 1) {
+      var rp = ease(opts.revealP);
+      var feather = H * 0.16;
+      var edgeY = rp * (H + feather);
+      var wipe = g.createLinearGradient(0, edgeY - feather, 0, edgeY);
+      wipe.addColorStop(0, 'rgba(0,0,0,0)');
+      wipe.addColorStop(1, 'rgba(0,0,0,1)');
+      g.fillStyle = wipe;
+      g.fillRect(0, 0, W, edgeY + 1);
+      g.fillStyle = '#000';
+      g.fillRect(0, edgeY, W, H - edgeY);
+
+      var bandA = Math.sin(rp * Math.PI) * 0.5;
+      if (bandA > 0.02) {
+        g.save();
+        g.globalCompositeOperation = 'lighter';
+        var band = g.createLinearGradient(0, edgeY - 22 * dpr, 0, edgeY);
+        band.addColorStop(0, 'rgba(0,0,0,0)');
+        band.addColorStop(1, S.accentColor);
+        g.globalAlpha = bandA;
+        g.fillStyle = band;
+        g.fillRect(0, edgeY - 22 * dpr, W, 22 * dpr);
+        g.restore();
+      }
+    }
+
+    // --- curved-edge falloff ---------------------------------------------
+    if (S.edgeFalloff > 0.01) {
+      var bandW = 22 * dpr * S.edgeFalloff;
+      var a = S.edgeFalloff * 0.92;
+      var sides = [
+        [0, 0, bandW, 0, 0, 0, bandW, H, true],
+        [W - bandW, 0, W, 0, W - bandW, 0, bandW, H, false]
+      ];
+      sides.forEach(function (s) {
+        var lg = g.createLinearGradient(s[0], s[1], s[2], s[3]);
+        lg.addColorStop(0, s[8] ? 'rgba(0,0,0,' + a + ')' : 'rgba(0,0,0,0)');
+        lg.addColorStop(1, s[8] ? 'rgba(0,0,0,0)' : 'rgba(0,0,0,' + a + ')');
+        g.fillStyle = lg;
+        g.fillRect(s[4], s[5], s[6], s[7]);
+      });
+      var vb = bandW * 0.7;
+      var tg = g.createLinearGradient(0, 0, 0, vb);
+      tg.addColorStop(0, 'rgba(0,0,0,' + a + ')'); tg.addColorStop(1, 'rgba(0,0,0,0)');
+      g.fillStyle = tg; g.fillRect(0, 0, W, vb);
+      var bg2 = g.createLinearGradient(0, H - vb, 0, H);
+      bg2.addColorStop(0, 'rgba(0,0,0,0)'); bg2.addColorStop(1, 'rgba(0,0,0,' + a + ')');
+      g.fillStyle = bg2; g.fillRect(0, H - vb, W, vb);
+    }
+
+    // --- edge light -------------------------------------------------------
+    if (S.edgeGlow > 0.01) {
+      var inset = 7 * dpr, rad = S.edgeRadius * dpr;
+      g.save();
+      g.globalCompositeOperation = 'lighter';
+      g.globalAlpha = S.edgeGlow;
+      var stroked = false;
+      if (g.createConicGradient) {
+        var cg = g.createConicGradient(opts.time * 0.5, W / 2, H / 2);
+        cg.addColorStop(0, 'rgba(0,0,0,0)');
+        cg.addColorStop(0.10, S.accentColor);
+        cg.addColorStop(0.26, 'rgba(0,0,0,0)');
+        cg.addColorStop(0.42, S.lineColor);
+        cg.addColorStop(0.58, 'rgba(0,0,0,0)');
+        cg.addColorStop(0.76, S.accentColor);
+        cg.addColorStop(1, 'rgba(0,0,0,0)');
+        g.strokeStyle = cg;
+        stroked = true;
+      } else {
+        g.strokeStyle = S.accentColor;
+      }
+      roundRectPath(g, inset, inset, W - inset * 2, H - inset * 2, rad);
+      g.globalAlpha = S.edgeGlow * 0.28;
+      g.lineWidth = 12 * dpr;
+      g.stroke();
+      g.globalAlpha = S.edgeGlow * (stroked ? 1 : 0.6);
+      g.lineWidth = 2.4 * dpr;
+      g.stroke();
+      g.restore();
+    }
+
+    // --- clock ------------------------------------------------------------
+    if (S.showClock) {
+      var now = new Date();
+      var hh = now.getHours(), mm = String(now.getMinutes()).padStart(2, '0');
+      var h12 = hh % 12 || 12;
+      var y = S.clockY * H;
+      g.save();
+      g.textAlign = 'center';
+      g.fillStyle = S.lineColor;
+      g.globalAlpha = 0.78;
+      g.font = '300 ' + (14 * dpr) + 'px Poppins, sans-serif';
+      g.fillText(now.toLocaleDateString(undefined, { weekday: 'short', month: 'long', day: 'numeric' }), W / 2, y);
+      g.globalAlpha = 0.96;
+      g.font = '200 ' + (78 * dpr) + 'px Poppins, sans-serif';
+      g.fillText(h12 + ':' + mm, W / 2, y + 74 * dpr);
+      g.restore();
+    }
+  }
+
+  function roundRectPath(g, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    g.beginPath();
+    g.moveTo(x + r, y);
+    g.arcTo(x + w, y, x + w, y + h, r);
+    g.arcTo(x + w, y + h, x, y + h, r);
+    g.arcTo(x, y + h, x, y, r);
+    g.arcTo(x, y, x + w, y, r);
+    g.closePath();
+  }
+
+  // =========================================================================
+  // Frame loop — one rAF owns the canvas
+  // =========================================================================
+  function resize() {
+    var r = view.getBoundingClientRect();
+    var dpr = Math.min(2, window.devicePixelRatio || 1);
+    var w = Math.round(r.width * dpr), h = Math.round(r.height * dpr);
+    if (w && h && (view.width !== w || view.height !== h)) {
+      view.width = w; view.height = h;
+      inkKey = '';
+    }
+  }
+  window.addEventListener('resize', resize);
+
+  var rafId = 0;
+
+  /**
+   * Restarts the frame loop, cancelling any pending frame first so we never end
+   * up with two loops running. Browsers stop servicing rAF for a backgrounded
+   * tab and do not always resume the chain, which would leave the preview
+   * frozen mid-reveal; re-kicking on visibilitychange fixes that.
+   */
+  function kick() {
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(loop);
+  }
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) kick(); });
+  window.addEventListener('pageshow', kick);
+
+  function loop(t) {
+    var dt = last ? Math.min(0.1, (t - last) / 1000) : 0.016;
+    last = t;
+    resize();
+
+    var rate = dt / 1.2;
+    if (colorP < targetP) colorP = Math.min(targetP, colorP + rate);
+    else if (colorP > targetP) colorP = Math.max(targetP, colorP - rate);
+    if (revealP < 1) revealP = Math.min(1, revealP + rate);
+
+    if (view.width && view.height) {
+      drawScene(ctx, view.width, view.height, {
+        colorP: colorP, revealP: revealP, time: t / 1000,
+        unit: view.width / 400
+      });
+    }
+
+    var d = document.documentElement;
+    $('prog').style.transform = 'scaleX(' + (d.scrollTop / Math.max(1, d.scrollHeight - d.clientHeight)) + ')';
+    rafId = requestAnimationFrame(loop);
+  }
+  kick();
+
+  // =========================================================================
+  // Export
+  // =========================================================================
+  function exportPng(colorState, filename) {
+    if (!art) return;
+    var c = document.createElement('canvas');
+    c.width = EXPORT_W; c.height = EXPORT_H;
+    var g = c.getContext('2d');
+
+    var savedCache = inkCache, savedKey = inkKey;
+    inkCache = null; inkKey = '';
+    drawScene(g, EXPORT_W, EXPORT_H, {
+      colorP: colorState ? 1 : 0, revealP: 1, time: 0,
+      unit: EXPORT_W / 400
+    });
+    inkCache = savedCache; inkKey = savedKey;
+
+    c.toBlob(function (blob) {
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      toast('Saved ' + filename);
+    }, 'image/png');
+  }
+
+  $('dlInk').addEventListener('click', function () { exportPng(false, 'sumi-ink.png'); });
+  $('dlColor').addEventListener('click', function () { exportPng(true, 'sumi-colour.png'); });
+
+  // Match the export to the actual screen where we can.
+  (function () {
+    var w = Math.round(screen.width * (window.devicePixelRatio || 1));
+    var h = Math.round(screen.height * (window.devicePixelRatio || 1));
+    if (w > 400 && h > 700 && h > w) {
+      EXPORT_W = w; EXPORT_H = h;
+      $('dims').textContent = w + ' × ' + h;
+    }
+  })();
+
+  // =========================================================================
+  // PWA install
+  // =========================================================================
+  var deferred = null;
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    deferred = e;
+    $('install').hidden = false;
+  });
+  $('install').addEventListener('click', function () {
+    if (!deferred) { toast('Use your browser menu → Install app'); return; }
+    deferred.prompt();
+    deferred.userChoice.then(function () { deferred = null; $('install').hidden = true; });
+  });
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function () { /* offline is a bonus, not a requirement */ });
+    });
+  }
+})();
+</script>
+</body>
+</html>
